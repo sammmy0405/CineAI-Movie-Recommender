@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🎬 CineAI — AI Movie Recommender
 ### Final Year College Project
 
@@ -217,3 +218,7 @@ pip3 install --break-system-packages -r requirements.txt
 - **Domain:** Artificial Intelligence / Machine Learning
 - **Algorithm:** Content-Based Filtering with TF-IDF + Cosine Similarity
 - **Dataset:** 5,562 IMDb movies across 13 genres
+=======
+# CineAI-Movie-Recommender
+AI Movie Recommender - Final Year College Project
+>>>>>>> db47ea3063e112ade10c7839b634a907fe68e900
