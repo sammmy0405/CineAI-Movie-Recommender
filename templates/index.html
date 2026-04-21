@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}CineAI — AI Movie Recommender{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Hero ── */
+  .hero {
+    min-height: 88vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 5rem 1rem 3rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(245,197,24,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 80%, rgba(76,201,240,0.05) 0%, transparent 50%),
+      radial-gradient(ellipse 40% 30% at 10% 70%, rgba(230,57,70,0.05) 0%, transparent 50%);
+    z-index: 0;
+  }
+  /* Film strip decoration */
+  .filmstrip {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 8px;
+    background: repeating-linear-gradient(90deg, var(--gold) 0, var(--gold) 20px, transparent 20px, transparent 28px);
+    opacity: 0.6;
+  }
+  .hero > * { position: relative; z-index: 1; }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(245,197,24,0.1);
+    border: 1px solid rgba(245,197,24,0.25);
+    color: var(--gold);
+    padding: 0.4rem 1rem;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3.5rem, 10vw, 8rem);
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+    margin-bottom: 1.5rem;
+  }
+  .hero-title .line2 {
+    color: var(--gold);
+    display: block;
+  }
+  .hero-title .line1 { display: block; }
+  .hero-sub {
+    color: var(--text2);
+    font-size: 1.1rem;
+    max-width: 500px;
+    line-height: 1.7;
+    margin-bottom: 3rem;
+  }
+
+  /* ── Search section ── */
+  .search-section {
+    width: 100%; max-width: 680px;
+    margin-bottom: 1.25rem;
+  }
+  .search-form { display: flex; flex-direction: column; gap: 1rem; }
+  .search-row {
+    display: flex; gap: 1rem; align-items: center;
+  }
+  .search-row .search-wrapper { flex: 1; }
+  .num-select {
+    background: var(--surface);
+    border: 1.5px solid var(--border2);
+    color: var(--text);
+    padding: 0.95rem 1.2rem;
+    border-radius: 50px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    cursor: pointer;
+    min-width: 140px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238d99ae' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+  }
+  .num-select:focus { border-color: var(--gold); }
+  .search-hint { color: var(--text3); font-size: 0.82rem; }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: flex; gap: 2.5rem; justify-content: center;
+    margin-top: 3rem; flex-wrap: wrap;
+  }
+  .stat-item { text-align: center; }
+  .stat-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 0.05em;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .stat-label { color: var(--text3); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 0.25rem; }
+
+  /* ── Top rated section ── */
+  .top-rated-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem;
+  }
+  .movie-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius2);
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .movie-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent-color, var(--gold));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .movie-card:hover { border-color: var(--border2); transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.45); }
+  .movie-card:hover::before { opacity: 1; }
+  .movie-card-rank {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    color: var(--border2);
+    line-height: 1;
+    margin-bottom: 0.75rem;
+    transition: color 0.3s;
+  }
+  .movie-card:hover .movie-card-rank { color: var(--accent-color, var(--gold)); opacity: 0.4; }
+  .movie-card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.3;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+  }
+  .movie-card-meta { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+  .movie-card-year { color: var(--text3); font-size: 0.8rem; }
+  .movie-card-director { color: var(--text3); font-size: 0.78rem; margin-top: 0.3rem; }
+
+  /* ── Genre chart section ── */
+  .genre-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+  }
+  .genre-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-decoration: none;
+    color: var(--text);
+    display: block;
+  }
+  .genre-card:hover { border-color: var(--border2); transform: translateY(-3px); background: var(--surface2); }
+  .genre-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+  }
+  .genre-count { color: var(--text3); font-size: 0.8rem; }
+  .genre-bar-wrap { margin-top: 0.75rem; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .genre-bar { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+
+  @media (max-width: 640px) {
+    .search-row { flex-direction: column; }
+    .num-select { width: 100%; }
+    .stats-row { gap: 1.5rem; }
+    .top-rated-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="filmstrip"></div>
+
+  <div class="hero-eyebrow fade-up fade-up-1">
+    ✦ Powered by AI & Machine Learning
+  </div>
+
+  <h1 class="hero-title fade-up fade-up-2">
+    <span class="line1">DISCOVER YOUR</span>
+    <span class="line2">NEXT FILM</span>
+  </h1>
+
+  <p class="hero-sub fade-up fade-up-3">
+    Enter any movie title and our AI will instantly find films you'll love —
+    based on genre, director, cast and cinematic DNA.
+  </p>
+
+  <!-- SEARCH FORM -->
+  <div class="search-section fade-up fade-up-3">
+    <form class="search-form" action="/recommend" method="POST">
+      <div class="search-row">
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            id="hero-search"
+            name="movie_title"
+            class="search-input"
+            placeholder="e.g. Inception, The Dark Knight, Dangal…"
+            autocomplete="off"
+            required
+          />
+          <div class="autocomplete-dropdown" id="hero-dropdown"></div>
+        </div>
+        <select name="num_recommendations" class="num-select">
+          <option value="5">5 picks</option>
+          <option value="10" selected>10 picks</option>
+          <option value="15">15 picks</option>
+          <option value="20">20 picks</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:1.1rem; font-size:1rem; font-weight:600; border-radius:50px;">
+        🎬 Find My Movies
+      </button>
+      <p class="search-hint">Try: "The Dark Knight", "Avengers", "Dangal", "Shichinin no samurai"</p>
+    </form>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row fade-up fade-up-3">
+    <div class="stat-item">
+      <div class="stat-number">{{ total_movies }}+</div>
+      <div class="stat-label">Movies</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">{{ total_genres }}</div>
+      <div class="stat-label">Genres</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">AI</div>
+      <div class="stat-label">Powered</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">100%</div>
+      <div class="stat-label">Free</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section">
+  <div class="container">
+    <div class="divider"></div>
+    <p class="section-title" style="text-align:center; margin-bottom:0.5rem;">HOW <span class="accent">IT WORKS</span></p>
+    <p style="text-align:center; color:var(--text3); margin-bottom:3rem; font-size:0.95rem;">Three steps to your perfect movie night</p>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1.5rem;">
+      {% for step in [
+        ('01', '🎯', 'Enter a Movie', 'Type any movie title you enjoyed. Our AI supports 5500+ films across all genres.'),
+        ('02', '🤖', 'AI Analyses It', 'Our TF-IDF model computes cosine similarity across genre, director & cast vectors.'),
+        ('03', '🍿', 'Get Suggestions', 'Receive personalised recommendations ranked by similarity score and IMDb rating.'),
+      ] %}
+      <div class="card" style="padding:2rem; text-align:center;">
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:3.5rem; color:var(--border2); line-height:1; margin-bottom:0.5rem;">{{ step[0] }}</div>
+        <div style="font-size:2rem; margin-bottom:1rem;">{{ step[1] }}</div>
+        <h3 style="font-family:'Syne',sans-serif; font-weight:700; margin-bottom:0.6rem;">{{ step[2] }}</h3>
+        <p style="color:var(--text2); font-size:0.9rem; line-height:1.6;">{{ step[3] }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- TOP RATED -->
+<section class="section">
+  <div class="container">
+    <div class="divider"></div>
+    <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:2rem; flex-wrap:wrap; gap:1rem;">
+      <h2 class="section-title">TOP <span class="accent">RATED</span></h2>
+      <a href="/explore?sort=rating" class="btn btn-ghost" style="font-size:0.88rem;">View all →</a>
+    </div>
+    <div class="top-rated-grid">
+      {% for movie in top_movies %}
+      <div class="movie-card" style="--accent-color: {{ movie.genre_color }}"
+           onclick="document.getElementById('hero-search').value='{{ movie.title|replace("'","\\'")|replace('"','') }}'; document.getElementById('hero-search').scrollIntoView({behavior:'smooth'});">
+        <div class="movie-card-rank">{{ '%02d' % loop.index }}</div>
+        <div class="movie-card-title">{{ movie.title }}</div>
+        <div class="movie-card-meta">
+          <span class="rating-badge">⭐ {{ movie.rating }}</span>
+          <span class="genre-pill" style="background:{{ movie.genre_color }}22; color:{{ movie.genre_color }}; border:1px solid {{ movie.genre_color }}44;">{{ movie.genre }}</span>
+        </div>
+        <div class="movie-card-year">{{ movie.year }} · {{ movie.director[:30] }}{% if movie.director|length > 30 %}…{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- GENRES -->
+<section class="section">
+  <div class="container">
+    <div class="divider"></div>
+    <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:2rem; flex-wrap:wrap; gap:1rem;">
+      <h2 class="section-title">BROWSE BY <span class="accent">GENRE</span></h2>
+      <a href="/explore" class="btn btn-ghost" style="font-size:0.88rem;">Explore all →</a>
+    </div>
+    <div class="genre-grid">
+      {% set max_count = genre_stats[0].count if genre_stats else 1 %}
+      {% for g in genre_stats %}
+      <a class="genre-card" href="/explore?genre={{ g.genre }}">
+        <div class="genre-name" style="color:{{ g.color }}">{{ g.genre }}</div>
+        <div class="genre-count">{{ g.count }} films</div>
+        <div class="genre-bar-wrap">
+          <div class="genre-bar" style="width:{{ (g.count/max_count*100)|int }}%; background:{{ g.color }};"></div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  initAutocomplete('hero-search', 'hero-dropdown');
+</script>
+{% endblock %}

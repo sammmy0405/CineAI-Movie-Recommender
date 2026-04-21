@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if source %}Results for {{ source.title }}{% else %}Search Results{% endif %} — CineAI
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .results-hero {
+    background: linear-gradient(180deg, rgba(245,197,24,0.04) 0%, transparent 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 3rem 0 2.5rem;
+  }
+  .results-header {
+    display: flex; align-items: flex-start; gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .results-back { 
+    color: var(--text3); font-size: 0.88rem; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    margin-bottom: 1.5rem;
+    transition: color 0.2s;
+  }
+  .results-back:hover { color: var(--gold); }
+
+  /* Source movie card */
+  .source-card {
+    background: var(--surface2);
+    border: 1px solid rgba(245,197,24,0.2);
+    border-radius: var(--radius2);
+    padding: 2rem;
+    flex: 1; min-width: 280px; max-width: 400px;
+    position: relative;
+    overflow: hidden;
+  }
+  .source-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--gold);
+  }
+  .source-label {
+    font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.15em;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .source-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 1.5rem;
+    line-height: 1.2; margin-bottom: 0.75rem;
+  }
+  .source-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+  .source-detail { color: var(--text2); font-size: 0.85rem; line-height: 1.5; }
+  .source-detail strong { color: var(--text); }
+
+  /* Result count + query */
+  .result-intro { flex: 1; min-width: 260px; }
+  .result-intro .query-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    letter-spacing: 0.03em;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+  }
+  .result-intro .query-text .accent { color: var(--gold); }
+  .result-count {
+    color: var(--text2); font-size: 0.95rem; margin-bottom: 1.5rem;
+  }
+
+  /* New search bar */
+  .new-search-form {
+    display: flex; gap: 0.75rem; align-items: center;
+    max-width: 500px;
+  }
+  .new-search-form .search-wrapper { flex: 1; }
+  .new-search-form .search-input { padding: 0.7rem 1rem 0.7rem 3rem; font-size: 0.92rem; }
+  .new-search-form .search-icon { font-size: 0.95rem; left: 1rem; }
+
+  /* ── Recommendation cards ── */
+  .recs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+    margin-top: 2.5rem;
+  }
+  .rec-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius2);
+    padding: 1.75rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .rec-card::after {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--card-color, var(--gold));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .rec-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+  }
+  .rec-card:hover::after { opacity: 1; }
+
+  .rec-rank {
+    position: absolute; top: 1.25rem; right: 1.25rem;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    color: var(--border2);
+    line-height: 1;
+  }
+  .rec-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 1.05rem;
+    line-height: 1.3;
+    margin-bottom: 0.75rem;
+    padding-right: 2.5rem;
+    color: var(--text);
+  }
+  .rec-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
+  .rec-info-row {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0.5rem; margin-bottom: 0.5rem;
+  }
+  .rec-info-item { font-size: 0.8rem; color: var(--text2); }
+  .rec-info-item strong { color: var(--text3); display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.1rem; }
+  .rec-actors { color: var(--text3); font-size: 0.8rem; line-height: 1.4; margin-top: 0.75rem; }
+
+  /* Similarity bar */
+  .sim-bar-wrap {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .sim-bar-label {
+    display: flex; justify-content: space-between;
+    font-size: 0.75rem; color: var(--text3); margin-bottom: 0.4rem;
+  }
+  .sim-bar-label span:last-child { color: var(--card-color, var(--gold)); font-weight: 600; }
+  .sim-bar-track {
+    height: 3px; background: var(--border);
+    border-radius: 2px; overflow: hidden;
+  }
+  .sim-bar-fill {
+    height: 100%;
+    background: var(--card-color, var(--gold));
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  /* Recommend again CTA */
+  .rec-card-cta {
+    display: none; margin-top: 1rem;
+  }
+  .rec-card:hover .rec-card-cta { display: block; }
+
+  /* Error state */
+  .error-state {
+    text-align: center; padding: 5rem 2rem;
+  }
+  .error-emoji { font-size: 4rem; margin-bottom: 1rem; }
+  .error-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.5rem; letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+  }
+  .error-sub { color: var(--text2); font-size: 1rem; max-width: 400px; margin: 0 auto 2rem; }
+
+  @media (max-width: 640px) {
+    .recs-grid { grid-template-columns: 1fr; }
+    .results-header { flex-direction: column; }
+    .source-card { max-width: 100%; }
+    .new-search-form { flex-direction: column; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="results-hero">
+  <div class="container">
+    <a href="/" class="results-back">← Back to Home</a>
+
+    {% if error %}
+    <!-- ERROR STATE -->
+    <div class="error-state">
+      <div class="error-emoji">🎭</div>
+      <h2 class="error-title">Movie Not Found</h2>
+      <p class="error-sub">{{ error }}</p>
+      <form action="/recommend" method="POST">
+        <div class="search-wrapper" style="max-width:400px; margin:0 auto 1rem;">
+          <span class="search-icon">🔍</span>
+          <input type="text" name="movie_title" class="search-input"
+                 placeholder="Try another title…" value="{{ query }}" required>
+          <div class="autocomplete-dropdown" id="err-dropdown"></div>
+        </div>
+        <input type="hidden" name="num_recommendations" value="10">
+        <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;">Search Again</button>
+      </form>
+    </div>
+
+    {% else %}
+    <!-- SUCCESS STATE -->
+    <div class="results-header">
+
+      <!-- Left: intro text + new search -->
+      <div class="result-intro">
+        <p class="query-text">BECAUSE YOU<br>LIKED <span class="accent">"{{ source.title|upper }}"</span></p>
+        <p class="result-count">
+          Found <strong style="color:var(--text)">{{ recommendations|length }} recommendations</strong>
+          — sorted by AI similarity score
+        </p>
+        <!-- New search -->
+        <form class="new-search-form" action="/recommend" method="POST">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="new-search" name="movie_title" class="search-input"
+                   placeholder="Try another movie…" autocomplete="off" required>
+            <div class="autocomplete-dropdown" id="new-dropdown"></div>
+          </div>
+          <input type="hidden" name="num_recommendations" value="{{ num_recs }}">
+          <button type="submit" class="btn btn-primary" style="padding:0.7rem 1.25rem; white-space:nowrap;">Go →</button>
+        </form>
+      </div>
+
+      <!-- Right: source movie card -->
+      <div class="source-card">
+        <div class="source-label">🎯 Your Movie</div>
+        <h2 class="source-title">{{ source.title }}</h2>
+        <div class="source-meta">
+          <span class="rating-badge">⭐ {{ source.rating }}</span>
+          <span class="genre-pill" style="background:{{ source.genre_color }}22; color:{{ source.genre_color }}; border:1px solid {{ source.genre_color }}44;">
+            {{ source.main_genre }}
+          </span>
+          {% for sg in source.side_genres[:2] %}
+          <span class="genre-pill" style="background:var(--surface); color:var(--text2); border:1px solid var(--border2);">{{ sg }}</span>
+          {% endfor %}
+        </div>
+        <div class="source-detail">
+          <strong>{{ source.year }}</strong> · {{ source.runtime }} min · {{ source.censor }}<br>
+          🎬 <strong>{{ source.director }}</strong><br>
+          👥 {{ source.actors[:70] }}{% if source.actors|length > 70 %}…{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% if recommendations %}
+<section class="section" style="padding-top:1.5rem;">
+  <div class="container">
+    <div class="recs-grid">
+      {% for movie in recommendations %}
+      <div class="rec-card" style="--card-color: {{ movie.genre_color }}"
+           onclick="document.querySelector('[name=movie_title]').value='{{ movie.title|replace("'","\\'") }}'; document.querySelector('[name=movie_title]').closest('form').submit();">
+        <div class="rec-rank">{{ '%02d' % movie.rank }}</div>
+        <h3 class="rec-title">{{ movie.title }}</h3>
+
+        <div class="rec-badges">
+          <span class="rating-badge">⭐ {{ movie.rating }}</span>
+          <span class="genre-pill" style="background:{{ movie.genre_color }}22; color:{{ movie.genre_color }}; border:1px solid {{ movie.genre_color }}44;">
+            {{ movie.main_genre }}
+          </span>
+          {% for sg in movie.side_genres[:1] %}
+          <span class="genre-pill" style="background:var(--surface2); color:var(--text2); border:1px solid var(--border);">{{ sg }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="rec-info-row">
+          <div class="rec-info-item">
+            <strong>Year</strong>{{ movie.year }}
+          </div>
+          <div class="rec-info-item">
+            <strong>Runtime</strong>{{ movie.runtime }} min
+          </div>
+          <div class="rec-info-item">
+            <strong>Rating</strong>{{ movie.censor }}
+          </div>
+          <div class="rec-info-item">
+            <strong>Box Office</strong>{{ movie.gross if movie.gross != 'Gross Unkown' else 'N/A' }}
+          </div>
+        </div>
+
+        <div class="rec-info-item" style="margin-bottom:0.25rem;">
+          <strong>Director</strong>{{ movie.director[:45] }}{% if movie.director|length > 45 %}…{% endif %}
+        </div>
+        <div class="rec-actors">👥 {{ movie.actors[:80] }}{% if movie.actors|length > 80 %}…{% endif %}</div>
+
+        <div class="sim-bar-wrap">
+          <div class="sim-bar-label">
+            <span>AI Match Score</span>
+            <span>{{ movie.similarity }}%</span>
+          </div>
+          <div class="sim-bar-track">
+            <div class="sim-bar-fill" style="width:{{ [movie.similarity * 1.5, 100]|min }}%"></div>
+          </div>
+        </div>
+
+        <div class="rec-card-cta">
+          <span style="font-size:0.8rem; color:var(--text3);">Click to find similar movies →</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Try another -->
+    <div style="text-align:center; margin-top:4rem;">
+      <p style="color:var(--text3); margin-bottom:1.25rem;">Not satisfied? Try a different movie</p>
+      <a href="/" class="btn btn-ghost">← Back to Search</a>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Autocomplete on new search
+  initAutocomplete('new-search', 'new-dropdown');
+  initAutocomplete('movie_title', 'err-dropdown');
+
+  // Animate similarity bars on page load
+  window.addEventListener('load', () => {
+    document.querySelectorAll('.sim-bar-fill').forEach((bar, i) => {
+      const w = bar.style.width;
+      bar.style.width = '0';
+      setTimeout(() => { bar.style.width = w; }, 200 + i * 60);
+    });
+  });
+</script>
+{% endblock %}

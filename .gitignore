@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+.env
+
+# Large model files (we'll handle separately)
+model/cosine_sim.pkl
+model/movies_df.pkl
+model/title_to_idx.pkl
+
+# OS files
+.DS_Store
+Thumbs.db

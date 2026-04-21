@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}CineAI — AI Movie Recommender{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #090b10;
+      --bg2:       #0d1117;
+      --bg3:       #131920;
+      --surface:   #161d27;
+      --surface2:  #1c2533;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.12);
+      --gold:      #f5c518;
+      --gold2:     #e8b404;
+      --red:       #e63946;
+      --blue:      #4cc9f0;
+      --green:     #06d6a0;
+      --text:      #e8eaf0;
+      --text2:     #8d99ae;
+      --text3:     #4a5568;
+      --radius:    12px;
+      --radius2:   20px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Grain overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999;
+      opacity: 0.35;
+    }
+
+    /* ── Navbar ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(9,11,16,0.92);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .nav-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.9rem;
+      letter-spacing: 0.08em;
+      color: var(--gold);
+      text-decoration: none;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .nav-logo span { color: var(--text); }
+    .nav-links { display: flex; gap: 0.25rem; }
+    .nav-links a {
+      color: var(--text2);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius);
+      transition: all 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    /* ── Main container ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
+    .section { padding: 4rem 0; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 1.75rem;
+      border-radius: 50px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--gold);
+      color: #000;
+    }
+    .btn-primary:hover { background: var(--gold2); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(245,197,24,0.3); }
+    .btn-ghost {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { background: var(--surface2); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+    .card:hover {
+      border-color: var(--border2);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+
+    /* ── Rating badge ── */
+    .rating-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      background: rgba(245,197,24,0.15);
+      border: 1px solid rgba(245,197,24,0.3);
+      color: var(--gold);
+      padding: 0.25rem 0.6rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* ── Genre pill ── */
+    .genre-pill {
+      display: inline-block;
+      padding: 0.2rem 0.75rem;
+      border-radius: 50px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    /* ── Search bar ── */
+    .search-wrapper {
+      position: relative; width: 100%;
+    }
+    .search-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border2);
+      border-radius: 50px;
+      padding: 1rem 1.5rem 1rem 3.25rem;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1.05rem;
+      outline: none;
+      transition: all 0.25s;
+    }
+    .search-input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 4px rgba(245,197,24,0.1);
+      background: var(--surface2);
+    }
+    .search-input::placeholder { color: var(--text3); }
+    .search-icon {
+      position: absolute; left: 1.1rem; top: 50%; transform: translateY(-50%);
+      color: var(--text3); font-size: 1.1rem; pointer-events: none;
+    }
+    .autocomplete-dropdown {
+      position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius2);
+      overflow: hidden;
+      z-index: 200;
+      display: none;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    }
+    .autocomplete-dropdown.show { display: block; }
+    .autocomplete-item {
+      padding: 0.75rem 1.25rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+      color: var(--text2);
+      transition: all 0.15s;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .autocomplete-item:hover, .autocomplete-item.active {
+      background: var(--surface);
+      color: var(--text);
+    }
+    .autocomplete-item .ac-icon { color: var(--gold); font-size: 0.8rem; }
+
+    /* ── Section headings ── */
+    .section-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      letter-spacing: 0.05em;
+      color: var(--text);
+      line-height: 1;
+    }
+    .section-title .accent { color: var(--gold); }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border2) 40%, var(--border2) 60%, transparent);
+      margin: 3rem 0;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 0;
+      margin-top: 6rem;
+    }
+    footer .container {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    footer .footer-brand {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem;
+      color: var(--gold);
+      letter-spacing: 0.08em;
+    }
+    footer p { color: var(--text3); font-size: 0.85rem; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 3px; }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp 0.6s ease forwards; }
+    .fade-up-1 { animation-delay: 0.1s; opacity: 0; }
+    .fade-up-2 { animation-delay: 0.2s; opacity: 0; }
+    .fade-up-3 { animation-delay: 0.3s; opacity: 0; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      nav { padding: 0 1rem; }
+      .container { padding: 0 1rem; }
+      .nav-links a { padding: 0.4rem 0.7rem; font-size: 0.82rem; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">🎬 Cine<span>AI</span></a>
+  <div class="nav-links">
+    <a href="/" class="{% if request.path=='/' %}active{% endif %}">Home</a>
+    <a href="/explore" class="{% if request.path=='/explore' %}active{% endif %}">Explore</a>
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<footer>
+  <div class="container">
+    <div class="footer-brand">🎬 CineAI</div>
+    <p>AI-Powered Movie Recommender &mdash; Final Year Project &mdash; Dataset: IMDb {{ total_movies if total_movies else '5562' }}+ Films</p>
+    <p style="color:var(--text3)">Built with Flask · Scikit-learn · TF-IDF · Cosine Similarity</p>
+  </div>
+</footer>
+
+<script>
+// Autocomplete utility (available globally)
+function initAutocomplete(inputId, dropdownId) {
+  const input = document.getElementById(inputId);
+  const dropdown = document.getElementById(dropdownId);
+  if (!input || !dropdown) return;
+
+  let activeIdx = -1;
+  let debounceTimer;
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      const q = input.value.trim();
+      if (q.length < 2) { dropdown.classList.remove('show'); return; }
+      const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(q)}`);
+      const titles = await res.json();
+      dropdown.innerHTML = '';
+      activeIdx = -1;
+      if (!titles.length) { dropdown.classList.remove('show'); return; }
+      titles.forEach((t, i) => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.innerHTML = `<span class="ac-icon">▶</span>${t}`;
+        item.addEventListener('mousedown', e => { e.preventDefault(); input.value = t; dropdown.classList.remove('show'); });
+        dropdown.appendChild(item);
+      });
+      dropdown.classList.add('show');
+    }, 200);
+  });
+
+  input.addEventListener('keydown', e => {
+    const items = dropdown.querySelectorAll('.autocomplete-item');
+    if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx+1, items.length-1); items.forEach((it,i) => it.classList.toggle('active', i===activeIdx)); if(items[activeIdx]) input.value = items[activeIdx].textContent.trim(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx-1, -1); items.forEach((it,i) => it.classList.toggle('active', i===activeIdx)); if(activeIdx>=0 && items[activeIdx]) input.value = items[activeIdx].textContent.trim(); }
+    else if (e.key === 'Escape') { dropdown.classList.remove('show'); }
+  });
+
+  document.addEventListener('click', e => { if (!input.contains(e.target) && !dropdown.contains(e.target)) dropdown.classList.remove('show'); });
+}
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
